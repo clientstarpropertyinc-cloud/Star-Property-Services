@@ -742,7 +742,17 @@
           </div>
         </div>
 
-        <form id="quoteForm" class="reveal">
+        <!--
+          SETUP NEEDED: this form needs a free Formspree endpoint to actually deliver email.
+          1. Go to https://formspree.io and sign up free (no credit card).
+          2. Create a new form and enter the email address that should receive requests.
+          3. Copy the endpoint it gives you (looks like https://formspree.io/f/abcdwxyz).
+          4. Paste it into the action="" attribute directly below, replacing YOUR_FORM_ID.
+          Free plan covers 50 submissions/month, which is plenty to start.
+        -->
+        <form id="quoteForm" class="reveal" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+          <input type="hidden" name="_subject" value="New Quote Request — Star Property Services">
+          <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off">
           <div class="form-row">
             <div class="form-field">
               <label for="fname">Full Name</label>
@@ -788,7 +798,7 @@
             <button type="submit" class="btn btn-gold">Submit Request</button>
             <span class="form-note">Prefer to talk it through? Call <a href="tel:+14699159977" style="color:var(--gold-light)">(469) 915-9977</a>.</span>
           </div>
-          <div class="form-status" id="formStatus">Opening your email app to send this request…</div>
+          <div class="form-status" id="formStatus"></div>
         </form>
       </div>
     </div>
@@ -877,31 +887,48 @@
   // Footer year
   document.getElementById('yr').textContent = new Date().getFullYear();
 
-  // Quote form -> mailto (static site, no backend attached)
+  // Quote form -> submits to Formspree (see setup note in the HTML comment above the form)
   const form = document.getElementById('quoteForm');
   const status = document.getElementById('formStatus');
-  form.addEventListener('submit', function (e) {
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  form.addEventListener('submit', async function (e) {
     e.preventDefault();
-    const data = new FormData(form);
-    const name = data.get('name') || '';
-    const phone = data.get('phone') || '';
-    const email = data.get('email') || '';
-    const service = data.get('service') || '';
-    const address = data.get('address') || '';
-    const message = data.get('message') || '';
 
-    const subject = `Quote Request — ${service} — ${name}`;
-    const body =
-      `Name: ${name}\n` +
-      `Phone: ${phone}\n` +
-      `Email: ${email}\n` +
-      `Service Needed: ${service}\n` +
-      `Property Address: ${address}\n\n` +
-      `Details:\n${message}`;
+    if (form.action.includes('YOUR_FORM_ID')) {
+      status.textContent = 'Form isn\'t connected yet — see the setup note in index.html to finish this in 2 minutes.';
+      status.classList.add('show');
+      return;
+    }
 
-    const mailto = `mailto:info@starpropertyservices.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    status.classList.add('show');
-    window.location.href = mailto;
+    const originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    status.textContent = '';
+    status.classList.remove('show');
+
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { 'Accept': 'application/json' }
+      });
+
+      if (response.ok) {
+        status.textContent = "Thanks — your request is in. We'll be in touch shortly.";
+        status.classList.add('show');
+        form.reset();
+      } else {
+        status.textContent = 'Something went wrong sending that. Please call us at (469) 915-9977.';
+        status.classList.add('show');
+      }
+    } catch (err) {
+      status.textContent = 'Something went wrong sending that. Please call us at (469) 915-9977.';
+      status.classList.add('show');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
+    }
   });
 </script>
 
